@@ -1,15 +1,19 @@
-  
-const express = require('express');
-const bodyParser = require('body-parser');
+import express from 'express'  
+import bodyParser from 'body-parser';
+import mongoClient from 'mongoose';
+import {check, validationResult } from 'express-validator'
+import bcrypt from 'bcrypt';
+import { validateToken } from './helper/helper.js';
+
 const app = express();
-const mongoClient = require('mongoose');
-const {check, validationResult,loginValidation, } = require('express-validator')
-const bcrypt = require('bcrypt');
 const salt = 10
 
 //const _id =  ObjectId();
 //const {mongoClien, ObjectId } = require('mongodb')
- const _id = require('mongodb')
+ import * as mongo  from 'mongodb'
+
+const _id = mongo._id;  
+
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
 	useNewUrlParser:'true',
@@ -131,7 +135,10 @@ check('password').isLength({min:5}) ,(req, res)=>{
         console.log(map._id)
 
         var token = map._id;
-        console.log(token,'dsgsdgfg')
+
+        console.log(token,'dsgsdgfg',validateToken(token))
+        // whnever console runs it shows value in terminal and pass value to the function
+
         var accessToken = (token, err) =>{
             if (token){
                 console.log(token)
@@ -152,24 +159,29 @@ check('password').isLength({min:5}) ,(req, res)=>{
     })
 });
 
-//console.log(token)
-const validateToken = (req, res, next)=>{
-    console.log('what?')
-    
-    next()
-}
-
-
-
-// app.get("/user/get", (req,res)=>{
+console.log('asdasdasd',validateToken('789456'))
 
 
 
 
 
+app.get("/user/get", (req,res)=>{
+    const token = ('asdasdasd', validateToken('456'))
+    console.log('token-',token )
+    res.send({
+        'text':'this is protected',
+        'text':('asdasd',validateToken('0202002020',token)),
+        //const usa = validateToken(('fd'))
+    })
 
-//     res.send('/')
-// })
+
+
+
+
+
+
+    res.send('/')
+})
 
 app.listen(3001,()=>{
 	console.log('listened')
