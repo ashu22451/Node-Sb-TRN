@@ -86,7 +86,7 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
     return true;
   }),
   (req, res) =>{
-  const firstamne = req.body.firstname;
+  const firstname = req.body.firstname;
   const lastname = req.body.lastname;
   const username = req.body.username;
   const password = req.body.password;
@@ -94,10 +94,6 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
   const email = req.body.email;
   const name = req.body.username;
   
-   
-  
-
-
 
   const errors = validationResult(req)
   if (!errors.isEmpty() ){
@@ -162,27 +158,26 @@ check('password').isLength({min:5}) ,(req, res)=>{
 console.log('asdasdasd',validateToken('789456'))
 
 
+const user = new textUser({
+    _id
+});
 
 
 
 app.get("/user/get", (req,res)=>{
-    const token = ('asdasdasd', validateToken('456'))
-    console.log('token-',token )
-    res.send({
-        'text':'this is protected',
-        'text':('asdasd',validateToken('0202002020',token)),
-        //const usa = validateToken(('fd'))
-    })
-
-
-
-
-
-
-
-    res.send('/')
-})
-
+        const{_id} = req.body;
+    console.log(_id)
+    textUser.findOne({_id:_id},(err,snip)=>{
+        console.log(snip)
+        if (snip){
+            res.send({
+                'info':snip
+            })
+        } else {
+            return res.status (500).json({errors:'none'})
+        }
+    });
+});
 app.listen(3001,()=>{
 	console.log('listened')
 });
