@@ -12,11 +12,10 @@ const salt = 10
 //const {mongoClien, ObjectId } = require('mongodb')
  import * as mongo  from 'mongodb'
 
-const _id = mongo._id;  
-
+const _id = mongo._id;
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
-	useNewUrlParser:'true',
+    useNewUrlParser:'true',
 })
 mongoClient.connection.on("error", err => {
     console.log("err", err)
@@ -27,11 +26,11 @@ mongoClient.connection.on("connected", (err, res) => {
 
 
 const userSchema = new mongoClient.Schema({
-	firstname: String,
-	lastname : String,
-	username : String, 
-	email    : String, 
-	password : String,
+    firstname: String,
+    lastname : String,
+    username : String, 
+    email    : String, 
+    password : String,
   confirmpassword :String, 
 });
 
@@ -73,7 +72,7 @@ app.use(bodyParser.urlencoded({extended:false}))
 
 
 app.get('/', (req, res)=>{
-	res.send('home page')
+    res.send('home page')
 })
 
 
@@ -93,7 +92,6 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
   const confirmpassword = req.body.confirmpassword;
   const email = req.body.email;
   const name = req.body.username;
-  
 
   const errors = validationResult(req)
   if (!errors.isEmpty() ){
@@ -123,6 +121,7 @@ check('password').isLength({min:5}) ,(req, res)=>{
     const email  = req.body.email;
     const password = req.body.password;
 
+
     const errors = validationResult(req)
     if (!errors.isEmpty() ){
         return res.status(400).json({errors:errors.array() });    
@@ -131,41 +130,33 @@ check('password').isLength({min:5}) ,(req, res)=>{
         console.log(map._id)
 
         var token = map._id;
-
-        console.log(token,'dsgsdgfg',validateToken(token))
+        console.log(token,'dsgsdgfg', validateToken(token))
         // whnever console runs it shows value in terminal and pass value to the function
-
-        var accessToken = (token, err) =>{
-            if (token){
-                console.log(token)
-            } else {
-                console.log(err)
-            }
-
-        }
         //console.log(map)   {to get whole about save object}
         if(map){
             res.send({
                 
                 'access token': map._id,
             })
+            console.log(req.body)
         } else {
             return res.status(500).json({errors:'none'})
         }
     })
 });
-
-console.log('asdasdasd',validateToken('789456'))
-
-
-const user = new textUser({
+var user = new textUser({
     _id
 });
 
-
+app.use("/user/get",(req, res, next)=>{
+    let u = textUser.findOne({_id:_id})
+    console.log(u)
+    next();
+})
 
 app.get("/user/get", (req,res)=>{
-        const{_id} = req.body;
+    
+    const{_id} = req.body;
     console.log(_id)
     textUser.findOne({_id:_id},(err,snip)=>{
         console.log(snip)
@@ -177,8 +168,30 @@ app.get("/user/get", (req,res)=>{
             return res.status (500).json({errors:'none'})
         }
     });
-});
+})
+app.use("/user/delete",(req, res, next)=>{
+    let u = textUser.findOne({_id:_id})
+    console.log(u)
+    next();
+})
+
+app.put('/user/delete',(req, res)=>{
+    const{_id} = req.body;
+    textUser.findOneAndDelete({_id:_id},(err,wipe)=>{
+        console.log(wipe)
+        if(wipe){
+        res.send({
+            'deleted':'thanks for service'
+            })
+    } else {
+        return res.status(500).json({errors:'none'})
+    }
+
+    })
+})
+
 app.listen(3001,()=>{
-	console.log('listened')
+    console.log('listened')
 });
 
+//const{}=req.body
