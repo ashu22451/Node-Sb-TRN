@@ -167,6 +167,8 @@ app.put('/user/delete',(req, res)=>{
 })
 
 app.listen(3001,()=>{
+    // console to check 
 	console.log('listened')
+
 });
 
