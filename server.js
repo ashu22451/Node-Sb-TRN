@@ -9,15 +9,8 @@ import NodeRSA from 'node-rsa'
 
 const app = express();
 const key = new NodeRSA ({b:512});
+//myDecrypter.setOptions({encryptionScheme:'pkcs1'})
 const _id = mongo._id;
-
-
-const text = 'sayo nara RSA!'
-const encrypted = key.encrypt(text,'base64');
-console.log('Encrypted text-',encrypted);
-
-const decrpyted = key.decrypt(encrypted,'utf8');
-console.log('decrpyted text:',decrpyted)
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
 	useNewUrlParser:'true',
