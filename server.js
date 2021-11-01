@@ -2,12 +2,22 @@ import express from 'express'
 import bodyParser from 'body-parser';
 import mongoClient from 'mongoose';
 import {check, validationResult } from 'express-validator'
-import bcrypt from 'bcrypt';
 import * as mongo  from 'mongodb'
+import NodeRSA from 'node-rsa'
+
+
 
 const app = express();
-const salt = 10
+const key = new NodeRSA ({b:512});
 const _id = mongo._id;
+
+
+const text = 'sayo nara RSA!'
+const encrypted = key.encrypt(text,'base64');
+console.log('Encrypted text-',encrypted);
+
+const decrpyted = key.decrypt(encrypted,'utf8');
+console.log('decrpyted text:',decrpyted)
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
 	useNewUrlParser:'true',
@@ -25,43 +35,13 @@ const userSchema = new mongoClient.Schema({
 	lastname : String,
 	username : String, 
 	email    : String, 
-	password : String,
-  confirmpassword :String, 
+	password : String, 
 });
 
 
-userSchema.pre('save',function(next){
-    const user=this;
-    
-    if(user.isModified('password')){
-        bcrypt.genSalt(salt,function(err,salt){
-            if(err)return next(err);
-
-            bcrypt.hash(user.password,salt,function(err,hash){
-                if(err) return next(err);
-                user.password=hash;
-                user.confirmpassword=hash;
-                next();
-            })
-
-        })
-    }
-    else{
-        next();
-    }
-});
-
-userSchema.methods.comparepassword=function(password,cb){
-    bcrypt.compare(password,this.password,function(err,isMatch){
-        if(err) return cb(next);
-        cb(null,isMatch);
-    });
-}
-
-const textUser = mongoClient.model('textUser',userSchema)
+const dataUser = mongoClient.model('dataUser',userSchema)
 
 app.use(bodyParser.urlencoded({extended:false}))
-
 
 app.get('/', (req, res)=>{
 	res.send('home page')
@@ -72,7 +52,7 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
   check("password").isLength({ min:5}),
   check('confirmpassword').custom((value, { req }) => {
     if (req.body.confirmpassword !== req.body.password) {
-      throw new Error('Both Passwords must be same');
+      throw new Error('Passwords must be same');
     };
     return true;
   }),
@@ -89,14 +69,25 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
   if (!errors.isEmpty() ){
     return res.status(200).json({errors:errors.array() });
   };
-  textUser.findOne({username:username},(err, example)=>{
+  dataUser.findOne({username:username},(err, example)=>{
     if (err)
         console.log(err);
     if (example){
         return res.status(200).json({errors:'Not available' });
         
     } else {
-        const Example = new textUser (req.body);
+        console.log(password)
+        const encryptPassword = key.encrypt(password,"base64");
+        console.log('Encrypted Password-',encryptPassword)
+        const decryptPassword = key.decrypt(encryptPassword,'utf8');
+        console.log('Decrpyted Password-',decryptPassword)
+        const Example = new dataUser ({
+                        "firstname":`${req.body.firstname}`,
+                        "lastname":`${req.body.lastname}`,
+                        "username":`${req.body.username}`,
+                        "password":`${encryptPassword}`,
+                        "email":`${req.body.email}`
+                    })
         Example.save(); 
         res.status(200).json({"message":"Registration complete"})
     }
@@ -115,30 +106,40 @@ check('password').isLength({min:5}) ,(req, res)=>{
     if (!errors.isEmpty() ){
         return res.status(400).json({errors:errors.array() });    
     };
-    textUser.findOne({email:email},(err, token)=>{
+    
+    dataUser.findOne({email:email},(err, token, )=>{
+        console.log(token)
+        dataUser.findOne({email:email},(err, pass)=>{
+        console.log('Password:',pass.password);
+        const password = pass.password
+        console.log('*********----',password)
+        const decryptPassword = key.decrypt(password,'utf8')
+        console.log('Decrypt Password-',decryptPassword)
+        })
         if(token){
             res.send({
                 'access token': token._id,
             })
         } else {
-            return res.status(500).json({errors:`Need to register first`})
+            return res.status(500).json({errors:`Invalid Credentials`})
         }
     })
 });
-var user = new textUser({
+var user = new dataUser({
     _id
 });
 
 app.use("/user/get",(req, res, next)=>{
-    let u = textUser.findOne({_id:_id})
+    let u = dataUser.findOne({_id:_id})
     console.log(u)
     next();
 })
 
 app.get("/user/get", (req,res)=>{
     const{_id} = req.body;
-    textUser.findOne({_id:_id},(err,snipe)=>{
+    dataUser.findOne({_id:_id},(err,snipe)=>{
         if (snipe){
+            console.log(snipe.password)
             res.send({
                 'info':snipe
             })
@@ -148,16 +149,16 @@ app.get("/user/get", (req,res)=>{
     });
 })
 app.use("/user/delete",(req, res, next)=>{
-    let u = textUser.findOne({_id:_id})
+    let u = dataUser.findOne({_id:_id})
     next();
 })
 
 app.put('/user/delete',(req, res)=>{
     const{_id} = req.body;
-    textUser.findOneAndDelete({_id:_id},(err,wipe)=>{
+    dataUser.findOneAndDelete({_id:_id},(err,wipe)=>{
         if(wipe){
         res.send({
-            'Message':'User data deleted'
+            'Message':'Data deleted'
             })
     } else {
         return res.status(500).json({errors:'No data found'})
