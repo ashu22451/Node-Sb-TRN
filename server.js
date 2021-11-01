@@ -9,7 +9,6 @@ import NodeRSA from 'node-rsa'
 
 const app = express();
 const key = new NodeRSA ({b:512});
-//myDecrypter.setOptions({encryptionScheme:'pkcs1'})
 const _id = mongo._id;
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
