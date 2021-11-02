@@ -9,6 +9,7 @@ import NodeRSA from 'node-rsa'
 
 const app = express();
 const key = new NodeRSA ({b:512});
+key.setOptions({encryptionScheme: 'pkcs1'})
 const _id = mongo._id;
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
@@ -27,7 +28,7 @@ const userSchema = new mongoClient.Schema({
 	lastname : String,
 	username : String, 
 	email    : String, 
-	password : String, 
+	password : String,   
 });
 
 
@@ -159,8 +160,27 @@ app.put('/user/delete',(req, res)=>{
     })
 })
 
+
+app.get('/user/list/:page', (req, res)=>{
+    dataUser.find({},(err, data)=>{
+        //https://www.w3schools.com/nodejs/nodejs_mongodb_limit.asp
+        console.log('>>>>>',data)
+        const arr1 = []
+        arr1.push(data)
+        console.log('################',arr1)
+        console.log('arrrrararaaarraa----',typeof(arr1))
+        for (let[key, value] of Object.entries(arr1)){
+            console.log(`${key}:${value}`)
+        }
+        res.send({'nice':arr1});
+    })
+
+});
+
+
+
+
 app.listen(3001,()=>{
-    // console to check 
 	console.log('listened')
 
 });
