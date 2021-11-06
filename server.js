@@ -2,8 +2,9 @@ import express from 'express'
 import bodyParser from 'body-parser';
 import mongoClient from 'mongoose';
 import {check, validationResult } from 'express-validator'
-import * as mongo  from 'mongodb'
-import NodeRSA from 'node-rsa'
+import * as mongo  from 'mongodb';
+import NodeRSA from 'node-rsa';
+import mongoosePaginate from 'mongoose-paginate-v2';
 
 
 
@@ -31,7 +32,7 @@ const userSchema = new mongoClient.Schema({
 	password : String,   
 });
 
-
+userSchema.plugin(mongoosePaginate)
 const dataUser = mongoClient.model('dataUser',userSchema)
 
 app.use(bodyParser.urlencoded({extended:false}))
@@ -50,12 +51,12 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
     return true;
   }),
   (req, res) =>{
-  const firstname = req.body.firstname;
-  const lastname = req.body.lastname;
-  const username = req.body.username;
-  const password = req.body.password;
+  const firstname       = req.body.firstname;
+  const lastname        = req.body.lastname;
+  const username        = req.body.username;
+  const password        = req.body.password;
   const confirmpassword = req.body.confirmpassword;
-  const email = req.body.email;
+  const email           = req.body.email;
   
 
   const errors = validationResult(req)
@@ -69,17 +70,15 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
         return res.status(200).json({errors:'Not available' });
         
     } else {
-        console.log(password)
+        
         const encryptPassword = key.encrypt(password,"base64");
-        console.log('Encrypted Password-',encryptPassword)
-        const decryptPassword = key.decrypt(encryptPassword,'utf8');
-        console.log('Decrpyted Password-',decryptPassword)
+        
         const Example = new dataUser ({
                         "firstname":`${req.body.firstname}`,
-                        "lastname":`${req.body.lastname}`,
-                        "username":`${req.body.username}`,
-                        "password":`${encryptPassword}`,
-                        "email":`${req.body.email}`
+                        "lastname" :`${req.body.lastname}`,
+                        "username" :`${req.body.username}`,
+                        "password" :`${encryptPassword}`,
+                        "email"    :`${req.body.email}`
                     })
         Example.save(); 
         res.status(200).json({"message":"Registration complete"})
@@ -101,13 +100,10 @@ check('password').isLength({min:5}) ,(req, res)=>{
     };
     
     dataUser.findOne({email:email},(err, token, )=>{
-        console.log(token)
+        
         dataUser.findOne({email:email},(err, pass)=>{
-        console.log('Password:',pass.password);
         const password = pass.password
-        console.log('*********----',password)
         const decryptPassword = key.decrypt(password,'utf8')
-        console.log('Decrypt Password-',decryptPassword)
         })
         if(token){
             res.send({
@@ -160,25 +156,19 @@ app.put('/user/delete',(req, res)=>{
     })
 })
 
+app.get('/user/list/', async (req, res, next)=>{
+    dataUser.paginate({},{page:req.query.page, limit:10})
+    .then(response=>{
+        res.json({
+            response
+        })
+    }) .catch(error=>{
+        res.status(400).json({
+            error
+        })
+    }) 
 
-app.get('/user/list/:page', (req, res)=>{
-    dataUser.find({},(err, data)=>{
-        //https://www.w3schools.com/nodejs/nodejs_mongodb_limit.asp
-        console.log('>>>>>',data)
-        const arr1 = []
-        arr1.push(data)
-        console.log('################',arr1)
-        console.log('arrrrararaaarraa----',typeof(arr1))
-        for (let[key, value] of Object.entries(arr1)){
-            console.log(`${key}:${value}`)
-        }
-        res.send({'nice':arr1});
-    })
-
-});
-
-
-
+ });
 
 app.listen(3001,()=>{
 	console.log('listened')
