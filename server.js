@@ -5,7 +5,7 @@ import {check, validationResult } from 'express-validator'
 import * as mongo  from 'mongodb';
 import NodeRSA from 'node-rsa';
 import mongoosePaginate from 'mongoose-paginate-v2';
-
+        
 
 
 const app = express();
@@ -25,11 +25,12 @@ mongoClient.connection.on("connected", (err, res) => {
 
 
 const userSchema = new mongoClient.Schema({
-	firstname: String,
-	lastname : String,
-	username : String, 
-	email    : String, 
-	password : String,   
+	firstname  : String,
+	lastname   : String,
+	username   : String, 
+	email      : String, 
+	password   : String,   
+    accessToken: String,
 });
 
 userSchema.plugin(mongoosePaginate)
@@ -87,12 +88,11 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
 });
 
 
-app.post('/user/login', check('email','Invalid mailId').isEmail(),
+app.post('/user/login', check('email','Invalid ').isEmail(),
 check('password').isLength({min:5}) ,(req, res)=>{
 
     const email  = req.body.email;
     const password = req.body.password;
-
 
     const errors = validationResult(req)
     if (!errors.isEmpty() ){
@@ -100,14 +100,18 @@ check('password').isLength({min:5}) ,(req, res)=>{
     };
     
     dataUser.findOne({email:email},(err, token, )=>{
-        
-        dataUser.findOne({email:email},(err, pass)=>{
-        const password = pass.password
-        const decryptPassword = key.decrypt(password,'utf8')
-        })
         if(token){
+            var dateTime = new Date();
+            var strTime = JSON.stringify(dateTime)(
+            {dataUser_id:token._id, email},
+             process.env.Token_KEY,{expiresIn:'1h',});
+
+            const temp = new dataUser({
+                "accessToken":`${strTime}`
+            })
+            temp.save();
             res.send({
-                'access token': token._id,
+                'access token': strTime,
             })
         } else {
             return res.status(500).json({errors:`Invalid Credentials`})
@@ -172,6 +176,5 @@ app.get('/user/list/', async (req, res, next)=>{
 
 app.listen(3001,()=>{
 	console.log('listened')
-
 });
 
