@@ -29,14 +29,38 @@ const userSchema = new mongoClient.Schema({
 	lastname   : String,
 	username   : String, 
 	email      : String, 
-	password   : String,   
-    accessToken: String,
-});
+	password   : String,  
+    adress     : [{
+        type   : mongoClient.Schema.Types.ObjectId,
+        ref    : 'ADDRESS'
+                }]
+                    });
 
+const access_token = new mongoClient.Schema({
+    Access_Token: String,
+    user_id     : String,
+                    })
+
+const address = new mongoClient.Schema({
+    address     : String,
+    city        : String,
+    state       : String,
+    pin_code    : String,
+    phone_no    : String,
+    user_id     : String,  
+    username    :[{
+         type   : mongoClient.Schema.Types.ObjectId,
+         ref    : 'dataUser' 
+                    }]
+                    })
 userSchema.plugin(mongoosePaginate)
+const ADDRESS = mongoClient.model('ADDRESS',address)
+const accesstoken = mongoClient.model('accesstoken',access_token) 
 const dataUser = mongoClient.model('dataUser',userSchema)
 
+
 app.use(bodyParser.urlencoded({extended:false}))
+
 
 app.get('/', (req, res)=>{
 	res.send('home page')
@@ -64,6 +88,9 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
   if (!errors.isEmpty() ){
     return res.status(200).json({errors:errors.array() });
   };
+
+
+
   dataUser.findOne({username:username},(err, example)=>{
     if (err)
         console.log(err);
@@ -87,7 +114,6 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
   })
 });
 
-
 app.post('/user/login', check('email','Invalid ').isEmail(),
 check('password').isLength({min:5}) ,(req, res)=>{
 
@@ -101,18 +127,18 @@ check('password').isLength({min:5}) ,(req, res)=>{
     
     dataUser.findOne({email:email},(err, token, )=>{
         if(token){
-            var dateTime = new Date();
-            var strTime = JSON.stringify(dateTime)(
-            {dataUser_id:token._id, email},
-             process.env.Token_KEY,{expiresIn:'1h',});
-
-            const temp = new dataUser({
-                "accessToken":`${strTime}`
-            })
-            temp.save();
+            const userID = token._id
+            const RandomNumber = Math.random()
+            console.log(RandomNumber)
+            //var Tokens = RandomNumber.sign({email:email}, {expiresIn:'1h'});
             res.send({
-                'access token': strTime,
-            })
+                'access Token': RandomNumber
+                    })
+            const Example2 = new accesstoken({
+                "Access_Token":`${RandomNumber}`,
+                "user_id"     :`${userID}`
+                             })
+            Example2.save();
         } else {
             return res.status(500).json({errors:`Invalid Credentials`})
         }
@@ -173,6 +199,47 @@ app.get('/user/list/', async (req, res, next)=>{
     }) 
 
  });
+
+app.post('/user/address', (req, res)=>{
+    
+    const Authorization = req.headers
+    console.log(Authorization)
+    accesstoken.findOne({Authorization:Authorization},(err,id)=>{
+        if (id){
+          const USER_id = id.user_id
+          console.log('User_id--',USER_id)
+            const pin_code= req.body.pin_code;
+            const phone_no= req.body.phone_no;
+            const address = req.body.address;
+            const state   = req.body.state;
+            const city    = req.body.city;
+            
+
+            const Example3 = new ADDRESS({
+                    "pin_code":`${pin_code}`,
+                    "phone_no":`${phone_no}`,
+                    "address" :`${address}`,
+                    "state"   :`${state}`,
+                    "city"    :`${city}`,
+                    "user_id" :`${USER_id}`,
+                    
+                            })
+            Example3.save();
+            res.send({address, city, state, pin_code, phone_no, USER_id})
+        } else {
+            ('err')
+        }
+    })
+})
+
+app.get('/user/get/:_id',(req, res)=>{
+    const _id = req.params
+    dataUser.findOne({_id:_id}).populate('adress').exec((err,user) =>{
+        if (err){return console.error(err);}
+        console.log(user)
+        console.log(populate())
+    })
+});
 
 app.listen(3001,()=>{
 	console.log('listened')
