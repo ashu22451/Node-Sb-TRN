@@ -5,13 +5,15 @@ import {check, validationResult } from 'express-validator'
 import * as mongo  from 'mongodb';
 import NodeRSA from 'node-rsa';
 import mongoosePaginate from 'mongoose-paginate-v2';
-        
+import jwt from 'jsonwebtoken';        
 
 
 const app = express();
 const key = new NodeRSA ({b:512});
 key.setOptions({encryptionScheme: 'pkcs1'})
 const _id = mongo._id;
+
+
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
 	useNewUrlParser:'true',
@@ -22,39 +24,34 @@ mongoClient.connection.on("error", err => {
 mongoClient.connection.on("connected", (err, res) => {
     console.log("mongoose is connected")
 })
-
-
-const userSchema = new mongoClient.Schema({
-	firstname  : String,
-	lastname   : String,
-	username   : String, 
-	email      : String, 
-	password   : String,  
-    adress     : [{
-        type   : mongoClient.Schema.Types.ObjectId,
-        ref    : 'ADDRESS'
-                }]
-                    });
-
-const access_token = new mongoClient.Schema({
-    Access_Token: String,
-    user_id     : String,
-                    })
-
-const address = new mongoClient.Schema({
-    address     : String,
+var Schema = mongoClient.Schema
+const addressSchema = Schema({
+    street      : String,
     city        : String,
     state       : String,
     pin_code    : String,
     phone_no    : String,
     user_id     : String,  
-    username    :[{
-         type   : mongoClient.Schema.Types.ObjectId,
-         ref    : 'dataUser' 
-                    }]
+    user        :[{type: Schema.Types.ObjectId,ref:'dataUser'}]
                     })
+
+const userSchema = Schema({
+	firstname  : String,
+	lastname   : String,
+	username   : String, 
+	email      : String, 
+	password   : String,  
+    address    : [{type : Schema.Types.ObjectId,
+    ref        : 'ADDRESS'}]
+                });
+
+const access_token = Schema({
+    Access_Token: String,
+    user_id     : String,
+                    })
+
 userSchema.plugin(mongoosePaginate)
-const ADDRESS = mongoClient.model('ADDRESS',address)
+const ADDRESS = mongoClient.model('ADDRESS',addressSchema)
 const accesstoken = mongoClient.model('accesstoken',access_token) 
 const dataUser = mongoClient.model('dataUser',userSchema)
 
@@ -89,8 +86,6 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
     return res.status(200).json({errors:errors.array() });
   };
 
-
-
   dataUser.findOne({username:username},(err, example)=>{
     if (err)
         console.log(err);
@@ -119,6 +114,7 @@ check('password').isLength({min:5}) ,(req, res)=>{
 
     const email  = req.body.email;
     const password = req.body.password;
+    
 
     const errors = validationResult(req)
     if (!errors.isEmpty() ){
@@ -130,7 +126,7 @@ check('password').isLength({min:5}) ,(req, res)=>{
             const userID = token._id
             const RandomNumber = Math.random()
             console.log(RandomNumber)
-            //var Tokens = RandomNumber.sign({email:email}, {expiresIn:'1h'});
+            var Tokens = (RandomNumber,{email:email}, {expiresIn:'1h'});
             res.send({
                 'access Token': RandomNumber
                     })
@@ -156,17 +152,17 @@ app.use("/user/get",(req, res, next)=>{
 
 app.get("/user/get", (req,res)=>{
     const{_id} = req.body;
-    dataUser.findOne({_id:_id},(err,snipe)=>{
-        if (snipe){
-            console.log(snipe.password)
-            res.send({
-                'info':snipe
-            })
+    dataUser.findOne({_id:_id}).populate('address').exec((err,user)=>{
+        if (user){
+            console.log(user.password)
+            console.log(user)
+            res.send({'info':user})
         } else {
             return res.status (500).json({errors:'No data found'})
         }
     });
 })
+
 app.use("/user/delete",(req, res, next)=>{
     let u = dataUser.findOne({_id:_id})
     next();
@@ -210,7 +206,7 @@ app.post('/user/address', (req, res)=>{
           console.log('User_id--',USER_id)
             const pin_code= req.body.pin_code;
             const phone_no= req.body.phone_no;
-            const address = req.body.address;
+            const street  = req.body.street;
             const state   = req.body.state;
             const city    = req.body.city;
             
@@ -218,28 +214,20 @@ app.post('/user/address', (req, res)=>{
             const Example3 = new ADDRESS({
                     "pin_code":`${pin_code}`,
                     "phone_no":`${phone_no}`,
-                    "address" :`${address}`,
+                    "street"  :`${street}`,
                     "state"   :`${state}`,
                     "city"    :`${city}`,
                     "user_id" :`${USER_id}`,
+                    "user"    :`${user._id}`
                     
                             })
             Example3.save();
-            res.send({address, city, state, pin_code, phone_no, USER_id})
+            res.send({street, city, state, pin_code, phone_no, USER_id})
         } else {
             ('err')
         }
     })
 })
-
-app.get('/user/get/:_id',(req, res)=>{
-    const _id = req.params
-    dataUser.findOne({_id:_id}).populate('adress').exec((err,user) =>{
-        if (err){return console.error(err);}
-        console.log(user)
-        console.log(populate())
-    })
-});
 
 app.listen(3001,()=>{
 	console.log('listened')
