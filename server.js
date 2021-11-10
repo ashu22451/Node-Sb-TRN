@@ -5,7 +5,8 @@ import {check, validationResult } from 'express-validator'
 import * as mongo  from 'mongodb';
 import NodeRSA from 'node-rsa';
 import mongoosePaginate from 'mongoose-paginate-v2';
-
+import jwt from 'jsonwebtoken'
+import passport from 'passport-local'
 
 
 const app = express();
@@ -58,21 +59,6 @@ const dataUser = mongoClient.model('dataUser',userSchema)
 
 
 app.use(bodyParser.urlencoded({extended:false}))
-
-dataUser.findOne({email:'fatimab45@mil.com'}).exec((err,doc)=>{
-        if (err) {return console.error(err); }
-        console.log(doc);
-        //console.log(doc._id)
-        let user_id = doc._id
-        //console.log('user_id---',user_id)
-
-ADDRESS.findOne({user_id:user_id}).exec((err,foo)=>{
-    if (err) {return console.error(err); }
-        console.log(foo);
-    })
-})
-
-
 
 app.get('/', (req, res)=>{
 	res.send('home page')
@@ -141,13 +127,13 @@ check('password').isLength({min:5}) ,(req, res)=>{
             const userID = token._id
             const RandomNumber = Math.random()
             console.log(RandomNumber)
-            var Tokens = (RandomNumber,{email:email}, {expiresIn:'1h'});
+            var Tokens = jwt.sign({email:email},'RandomNumber', {expiresIn:'1h'});
             res.send({
                 'access Token': RandomNumber,
                 'user_id'     : token._id
                     })
             const Example2 = new accesstoken({
-                "Access_Token":`${RandomNumber}`,
+                "Access_Token":`${Tokens}`,
                 "user_id"     :`${userID}`
                              })
             Example2.save();
