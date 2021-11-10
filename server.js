@@ -5,7 +5,7 @@ import {check, validationResult } from 'express-validator'
 import * as mongo  from 'mongodb';
 import NodeRSA from 'node-rsa';
 import mongoosePaginate from 'mongoose-paginate-v2';
-import jwt from 'jsonwebtoken';        
+
 
 
 const app = express();
@@ -31,9 +31,10 @@ const addressSchema = Schema({
     state       : String,
     pin_code    : String,
     phone_no    : String,
-    user_id     : String,  
-    user        :[{type: Schema.Types.ObjectId,ref:'dataUser'}]
-                    })
+    user_id     : String,
+    username    : [{type: Schema.Types.ObjectId,
+    ref         : 'dataUser'}]  
+                })
 
 const userSchema = Schema({
 	firstname  : String,
@@ -57,6 +58,20 @@ const dataUser = mongoClient.model('dataUser',userSchema)
 
 
 app.use(bodyParser.urlencoded({extended:false}))
+
+dataUser.findOne({email:'fatimab45@mil.com'}).exec((err,doc)=>{
+        if (err) {return console.error(err); }
+        console.log(doc);
+        //console.log(doc._id)
+        let user_id = doc._id
+        //console.log('user_id---',user_id)
+
+ADDRESS.findOne({user_id:user_id}).exec((err,foo)=>{
+    if (err) {return console.error(err); }
+        console.log(foo);
+    })
+})
+
 
 
 app.get('/', (req, res)=>{
@@ -128,7 +143,8 @@ check('password').isLength({min:5}) ,(req, res)=>{
             console.log(RandomNumber)
             var Tokens = (RandomNumber,{email:email}, {expiresIn:'1h'});
             res.send({
-                'access Token': RandomNumber
+                'access Token': RandomNumber,
+                'user_id'     : token._id
                     })
             const Example2 = new accesstoken({
                 "Access_Token":`${RandomNumber}`,
@@ -152,11 +168,15 @@ app.use("/user/get",(req, res, next)=>{
 
 app.get("/user/get", (req,res)=>{
     const{_id} = req.body;
-    dataUser.findOne({_id:_id}).populate('address').exec((err,user)=>{
-        if (user){
-            console.log(user.password)
-            console.log(user)
-            res.send({'info':user})
+    dataUser.findOne({_id:_id}).populate().exec((err,usr)=>{
+        if (usr){
+            console.log(usr)
+            console.log(usr._id)
+            let user_id = usr._id
+            ADDRESS.findOne({user_id:user_id}).exec((err,foo)=>{
+                if (err) {return console.error(err); }
+            res.send({'info':usr, 'address':foo})
+            })
         } else {
             return res.status (500).json({errors:'No data found'})
         }
