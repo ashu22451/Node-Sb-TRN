@@ -6,14 +6,15 @@ import * as mongo  from 'mongodb';
 import NodeRSA from 'node-rsa';
 import mongoosePaginate from 'mongoose-paginate-v2';
 import jwt from 'jsonwebtoken'
-import passport from 'passport-local'
+import passport from 'passport' 
+import passportLocal from 'passport-local'
 
 
 const app = express();
 const key = new NodeRSA ({b:512});
 key.setOptions({encryptionScheme: 'pkcs1'})
 const _id = mongo._id;
-
+var LocalStrategy = passportLocal.Strategy
 
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
@@ -110,38 +111,68 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
   })
 });
 
-app.post('/user/login', check('email','Invalid ').isEmail(),
-check('password').isLength({min:5}) ,(req, res)=>{
 
-    const email  = req.body.email;
-    const password = req.body.password;
-    
 
-    const errors = validationResult(req)
-    if (!errors.isEmpty() ){
-        return res.status(400).json({errors:errors.array() });    
-    };
+passport.use(new LocalStrategy(function (email, done) {
+     //const email = req.body.email;
+   dataUser.findOne({email:'saleemb@mil.com'},function (err, user){
+     console.log(email) 
+    console.log(user)
+    if (err) {return done(err);}
+    if (!dataUser) {return done(null, false); }
+    return done (null, dataUser);
+            })    
     
-    dataUser.findOne({email:email},(err, token, )=>{
-        if(token){
-            const userID = token._id
-            const RandomNumber = Math.random()
-            console.log(RandomNumber)
-            var Tokens = jwt.sign({email:email},'RandomNumber', {expiresIn:'1h'});
-            res.send({
-                'access Token': RandomNumber,
-                'user_id'     : token._id
-                    })
-            const Example2 = new accesstoken({
-                "Access_Token":`${Tokens}`,
-                "user_id"     :`${userID}`
-                             })
-            Example2.save();
-        } else {
-            return res.status(500).json({errors:`Invalid Credentials`})
-        }
+        })
+    )
+
+app.use(passport.initialize());
+
+app.post('/user',passport.authenticate('local',{successRedirect:'/users/login', failureRedirect:'/'}),
+    (req,res)=>{
+        const email = req.body.email;
+        const password = req.body.password;
+        console.log(email)
+        console.log('dsfgfg')
     })
-});
+
+
+app.get ('/user/login', (req,res)=>{
+    res.send('nice')
+})
+
+// app.post('/user/login', check('email','Invalid ').isEmail(),
+// check('password').isLength({min:5}) ,(req, res)=>{
+
+//     const email  = req.body.email;
+//     const password = req.body.password;
+    
+
+//     const errors = validationResult(req)
+//     if (!errors.isEmpty() ){
+//         return res.status(400).json({errors:errors.array() });    
+//     };
+    
+//     dataUser.findOne({email:email},(err, token, )=>{
+//         if(token){
+//             const userID = token._id
+//             const RandomNumber = Math.random()
+//             console.log(RandomNumber)
+//             var Tokens = jwt.sign({email:email},'RandomNumber', {expiresIn:'1h'});
+//             res.send({
+//                 'access Token': RandomNumber,
+//                 'user_id'     : token._id
+//                     })
+//             const Example2 = new accesstoken({
+//                 "Access_Token":`${Tokens}`,
+//                 "user_id"     :`${userID}`
+//                              })
+//             Example2.save();
+//         } else {
+//             return res.status(500).json({errors:`Invalid Credentials`})
+//         }
+//     })
+// });
 var user = new dataUser({
     _id
 });
