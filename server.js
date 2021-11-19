@@ -1,20 +1,23 @@
-import express from 'express'  
-import bodyParser from 'body-parser';
-import mongoClient from 'mongoose';
-import {check, validationResult } from 'express-validator'
-import * as mongo  from 'mongodb';
-import NodeRSA from 'node-rsa';
-import mongoosePaginate from 'mongoose-paginate-v2';
-import jwt from 'jsonwebtoken'
-import passport from 'passport' 
-import passportLocal from 'passport-local'
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoClient = require('mongoose');
+const {check, validationResult } = require('express-validator')
+const mongo = require('mongodb')
+const NodeRSA = require('node-rsa');
+const mongoosePaginate = require('mongoose-paginate-v2')
+const jwt = require('jsonwebtoken');
+const JwtStrategy = require('passport-jwt').Strategy,
+      ExtractJwt = require('passport-jwt').ExtractJwt
+const passport = require('passport')
+
 
 
 const app = express();
 const key = new NodeRSA ({b:512});
 key.setOptions({encryptionScheme: 'pkcs1'})
 const _id = mongo._id;
-var LocalStrategy = passportLocal.Strategy
+app.use(bodyParser.urlencoded({extended:false}))
+app.use(passport.initialize());
 
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
@@ -43,7 +46,8 @@ const userSchema = Schema({
 	lastname   : String,
 	username   : String, 
 	email      : String, 
-	password   : String,  
+	password   : String, 
+    Token      : String, 
     address    : [{type : Schema.Types.ObjectId,
     ref        : 'ADDRESS'}]
                 });
@@ -59,7 +63,6 @@ const accesstoken = mongoClient.model('accesstoken',access_token)
 const dataUser = mongoClient.model('dataUser',userSchema)
 
 
-app.use(bodyParser.urlencoded({extended:false}))
 
 app.get('/', (req, res)=>{
 	res.send('home page')
@@ -97,89 +100,89 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
     } else {
         
         const encryptPassword = key.encrypt(password,"base64");
-        
+        var token = jwt.sign({email:email},'secret',{expiresIn:3600})
         const Example = new dataUser ({
                         "firstname":`${req.body.firstname}`,
                         "lastname" :`${req.body.lastname}`,
                         "username" :`${req.body.username}`,
                         "password" :`${encryptPassword}`,
-                        "email"    :`${req.body.email}`
+                        "email"    :`${req.body.email}`,
+                        "Token"    :`${token}`
                     })
         Example.save(); 
-        res.status(200).json({"message":"Registration complete"})
+        res.status(200).json({"message":"Registration complete",token:token, auth:true})
     }
   })
 });
 
+var opts = {}
+opts.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
+opts.secretOrKey = 'secret';
 
 
-passport.use(new LocalStrategy(function (email, done) {
-     //const email = req.body.email;
-   dataUser.findOne({email:'saleemb@mil.com'},function (err, user){
-     console.log(email) 
-    console.log(user)
-    if (err) {return done(err);}
-    if (!dataUser) {return done(null, false); }
-    return done (null, dataUser);
-            })    
+console.log('yes')
+passport.use(new JwtStrategy(opts, function(jwt_payload, done) {
+    dataUser.findOne({email:jwt_payload.email}, function(err, user) {
+        console.log(jwt_payload.email)
+        if (err) { 
+            return done(err, false);
+        }
+        if (user) {
+            return done(null, user);
+        } else {
+            return done(null, false);
+        }
+    });  
+ }));
+
+// created for just checking authentication
+app.get('/protected', passport.authenticate('jwt', {session:false}),(req,res)=>{
     
-        })
-    )
-
-app.use(passport.initialize());
-
-app.post('/user',passport.authenticate('local',{successRedirect:'/users/login', failureRedirect:'/'}),
-    (req,res)=>{
-        const email = req.body.email;
-        const password = req.body.password;
-        console.log(email)
-        console.log('dsfgfg')
-    })
-
-
-app.get ('/user/login', (req,res)=>{
-    res.send('nice')
+    res.status(200).send({success: true,})
 })
 
-// app.post('/user/login', check('email','Invalid ').isEmail(),
-// check('password').isLength({min:5}) ,(req, res)=>{
 
-//     const email  = req.body.email;
-//     const password = req.body.password;
+
+app.post('/user/login', check('email','Invalid ').isEmail(),
+check('password').isLength({min:5}) ,passport.authenticate('jwt', { session: false }),(req, res)=>{
+
+    const email  = req.body.email;
+    const password = req.body.password;
     
 
-//     const errors = validationResult(req)
-//     if (!errors.isEmpty() ){
-//         return res.status(400).json({errors:errors.array() });    
-//     };
+    const errors = validationResult(req)
+    if (!errors.isEmpty() ){
+        return res.status(400).json({errors:errors.array() });    
+    };
     
-//     dataUser.findOne({email:email},(err, token, )=>{
-//         if(token){
-//             const userID = token._id
-//             const RandomNumber = Math.random()
-//             console.log(RandomNumber)
-//             var Tokens = jwt.sign({email:email},'RandomNumber', {expiresIn:'1h'});
-//             res.send({
-//                 'access Token': RandomNumber,
-//                 'user_id'     : token._id
-//                     })
-//             const Example2 = new accesstoken({
-//                 "Access_Token":`${Tokens}`,
-//                 "user_id"     :`${userID}`
-//                              })
-//             Example2.save();
-//         } else {
-//             return res.status(500).json({errors:`Invalid Credentials`})
-//         }
-//     })
-// });
+    dataUser.findOne({email:email},(err, token, )=>{
+        if(token){
+            const userID = token._id
+            var Tokens = jwt.sign({email:email},'secret', {expiresIn:'1h'});
+            res.send({
+                'access Token': Tokens,
+                'user_id'     : token._id,
+                success       : true
+                    })
+            const Example2 = new accesstoken({
+                "Access_Token":`${Tokens}`,
+                "user_id"     :`${userID}`
+                             })
+            Example2.save();
+
+        } else {
+            return res.status(500).json({errors:`Invalid Credentials`})
+        }
+    })
+});
+
+
 var user = new dataUser({
     _id
 });
 
 app.use("/user/get",(req, res, next)=>{
     let u = dataUser.findOne({_id:_id})
-    console.log(u)
     next();
 })
 
