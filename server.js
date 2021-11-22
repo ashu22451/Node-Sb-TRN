@@ -288,45 +288,47 @@ app.post('/forgot-password',(req, res)=>{
     })
 })
 
+
+// half done link !!  
 app.post('/user/verify-reset-password', (req, res)=>{
     const email = req.body.email
     dataUser.findOne({email:email}, (err,fetch)=>{
     if (fetch){
         console.log(fetch.email) 
         const rst = fetch.resetToken
-        
-        async function main () {
-            let testAccount = await
-            nodemailer.createTestAccount();
 
-            let transporter = nodemailer.createTransport({
-                host : 'smtp.ethereal.email',
-                port : 587,
-                secure : false,
-                auth : {
-                    user : 'erika.rau29@ethereal.email',
-                    pass : '5xre82EWREa5XvpbuW'
-                }
-            })
-            let info = await transporter.sendMail({
-                from: email,
-                to : 'saurbhbhandari@gmail.com',
-                subject: 'hello',
-                text : ' hello world',
-            });
+        let mailTransporter = nodemailer.createTransport({
+            service : 'gmail',
+            host : 'smtp.gmail.com',
+            port : 465,
+            secure: true,
+            auth :{
+                //type: '0auth2',
+                user : 'lipasamuel94@gmail.com',
+                pass : '9410548716'
+            }
+        });
 
-            console.log('message sent :%s', info)
+        let mailDetails = {
+            from : email,
+            to   : 'bhandarisaurbh@gmail.com',
+            subject: 'test mail',
+            text : `reset link for reset password-- ${rst}`
 
-            console.log('preview url: %s',
-                nodemailer.getTestMessageUrl(info));
-        }
-        main().catch(console.error);
+        };
 
-        
+        mailTransporter.sendMail(mailDetails,(err, data)=>{
+            if(err){
+                res.json(err);
+                console.log('error occurs')
+            } else {
+                res.json(data)
+                console.log('email sent ')
+            }
+        });
     } else {
         res.status(401).send({"message":"enter valid email"})
-
-    }   
+        }   
     })
 })
 
