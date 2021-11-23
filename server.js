@@ -10,7 +10,7 @@ const JwtStrategy = require('passport-jwt').Strategy,
       ExtractJwt = require('passport-jwt').ExtractJwt
 const passport = require('passport')
 const nodemailer = require('nodemailer')
-
+const fs = require('fs')
 
 const app = express();
 const key = new NodeRSA ({b:512});
@@ -50,6 +50,7 @@ const userSchema = Schema({
 	password   : {type:String, required: true}, 
     Token      : String, 
     resetToken : String,
+    image      : {data: Buffer,contentType: String},
     address    : [{type : Schema.Types.ObjectId,
     ref        : 'ADDRESS'}]
                 });
@@ -127,7 +128,7 @@ opts.secretOrKey = 'secret';
 
 passport.use(new JwtStrategy(opts, function(jwt_payload, done) {
     dataUser.findOne({email:jwt_payload.email}, function(err, user) {
-        console.log('passport function--',jwt_payload.email)
+        console.log('passport function jwt_payload--',jwt_payload.email)
         if (err) { 
             return done(err, false);
         }
@@ -169,6 +170,7 @@ check('password').isLength({min:5}) ,passport.authenticate('jwt', { session: fal
                 success       : true
                     })
             const Example2 = new accesstoken({
+
                 "Access_Token":`${Tokens}`,
                 "user_id"     :`${userID}`
                              })
@@ -331,6 +333,30 @@ app.post('/user/verify-reset-password', (req, res)=>{
         }   
     })
 })
+
+// app.post('/user/profile-image',passport.authenticate('jwt', { session: false }),(req, res, next)=>{
+//     const email = req.user.email
+//     const _id = req.user._id
+//     console.log('idddd ',_id)
+//     console.log('profile-image',email)
+
+//     dataUser.findOne({email:email}, (err,mailId)=>{
+//         if (mailId){
+//             let imagePath = '/home/bhoots/Downloads/AJ.jpeg';
+//             const a = new dataUser;
+//             a.image.data = fs.readFileSync(imagePath);
+//             a.image.contentType = 'image/jpeg'
+//             a.save (function(err,a){
+//                 if(err) throw err;
+//                 console.error('image saved')
+//             res.status(200).send({success:true, userEmail:email, image:a})
+//             })
+//             console.log('frm dataUser',mailId)
+//         } else{
+//             console.log(err)
+//         }
+//     })
+// })
 
 app.listen(3001,()=>{
 	console.log('listened')
