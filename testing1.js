@@ -9,8 +9,10 @@ const jwt = require('jsonwebtoken');
 const JwtStrategy = require('passport-jwt').Strategy,
       ExtractJwt = require('passport-jwt').ExtractJwt
 const passport = require('passport')
-const nodemailer = require('nodemailer')
-const fs = require('fs')
+const nodemailer = require('nodemailer');
+const async = require('async');
+
+
 
 const app = express();
 const key = new NodeRSA ({b:512});
@@ -20,7 +22,7 @@ app.use(bodyParser.urlencoded({extended:false}))
 app.use(passport.initialize());
 
 
-mongoClient.connect('mongodb://localhost:27017/Serverdb',{
+mongoClient.connect('mongodb://localhost:27017/testingdb',{
 	useNewUrlParser:'true',
 })
 mongoClient.connection.on("error", err => {
@@ -45,12 +47,10 @@ const addressSchema = Schema({
 const userSchema = Schema({
 	firstname  : {type:String, required: true},
 	lastname   : {type:String, required: true},
-	username   : {type:String, required: true}, 
-	email      : {type:String, required: true}, 
-	password   : {type:String, required: true}, 
+	username   : {type:String, required: true, unique:true}, 
+	email      : {type:String, required: true, unique:true}, 
+	password   : {type:String, required: true, unique:true}, 
     Token      : String, 
-    resetToken : String,
-    image      : {data: Buffer,contentType: String},
     address    : [{type : Schema.Types.ObjectId,
     ref        : 'ADDRESS'}]
                 });
@@ -104,15 +104,13 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
         
         const encryptPassword = key.encrypt(password,"base64");
         var token = jwt.sign({email:email},'secret',{expiresIn:3600})
-        var resetToken = jwt.sign({email:email},'secret')
         const Example = new dataUser ({
-                        "firstname" :`${req.body.firstname}`,
-                        "lastname"  :`${req.body.lastname}`,
-                        "username"  :`${req.body.username}`,
-                        "password"  :`${encryptPassword}`,
-                        "email"     :`${req.body.email}`,
-                        "Token"     :`${token}`,
-                        "resetToken":`${resetToken}`,
+                        "firstname":`${req.body.firstname}`,
+                        "lastname" :`${req.body.lastname}`,
+                        "username" :`${req.body.username}`,
+                        "password" :`${encryptPassword}`,
+                        "email"    :`${req.body.email}`,
+                        "Token"    :`${token}`
                     })
         Example.save(); 
         res.status(200).json({"message":"Registration complete",token:token, auth:true})
@@ -125,10 +123,10 @@ opts.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
 opts.secretOrKey = 'secret';
 
 
-
+console.log('yes')
 passport.use(new JwtStrategy(opts, function(jwt_payload, done) {
     dataUser.findOne({email:jwt_payload.email}, function(err, user) {
-        console.log('passport function jwt_payload--',jwt_payload.email)
+        console.log(jwt_payload.email)
         if (err) { 
             return done(err, false);
         }
@@ -163,14 +161,13 @@ check('password').isLength({min:5}) ,passport.authenticate('jwt', { session: fal
     dataUser.findOne({email:email},(err, token, )=>{
         if(token){
             const userID = token._id
-            var Tokens   = jwt.sign({email:email},'secret', {expiresIn:'1h'});
+            var Tokens = jwt.sign({email:email},'secret', {expiresIn:3600});
             res.send({
                 'access Token': Tokens,
                 'user_id'     : token._id,
                 success       : true
                     })
             const Example2 = new accesstoken({
-
                 "Access_Token":`${Tokens}`,
                 "user_id"     :`${userID}`
                              })
@@ -275,88 +272,27 @@ app.post('/user/address', (req, res)=>{
     })
 })
 
+// const signUp = async(data)=>{
+//     let user = await dataUser.findOne({email:data.email});
+//     if (user) {
+//         throw new Error("email already exist");
+//     }
 
-app.post('/forgot-password',(req, res)=>{
-    const email = req.body.email
+//    var user = new dataUser(data);
+// }
 
-    dataUser.findOne({email:email}, (err,get)=>{
-        resetToken = get.resetToken
-        console.log('frm resetToken dataUser',resetToken) 
-        if (get){
-            res.status(200).send({'data':get, 'token':get.Token, 'email':get.email,'resetToken':get.resetToken})
-        } else {
-            res.status(401).send({'message':'does not exist' })
-        };
+app.post('/reset',(req, res)=>{
+    const email = req.body.email 
+    dataUser.findOne({email:email},(err,fine)=>{
+        console.log(fine.email)
+        if(fine){
+            res.send({'email':fine})
+        } else{
+            res.status(200).json({'message':'none'})
+        }
+
     })
 })
-
-
-// half done link !!  
-app.post('/user/verify-reset-password', (req, res)=>{
-    const email = req.body.email
-    dataUser.findOne({email:email}, (err,fetch)=>{
-    if (fetch){
-        console.log(fetch.email) 
-        const rst = fetch.resetToken
-
-        let mailTransporter = nodemailer.createTransport({
-            service : 'gmail',
-            host : 'smtp.gmail.com',
-            port : 465,
-            secure: true,
-            auth :{
-                //type: '0auth2',
-                user : 'lipasamuel94@gmail.com',
-                pass : '9410548716'
-            }
-        });
-
-        let mailDetails = {
-            from : email,
-            to   : 'bhandarisaurbh@gmail.com',
-            subject: 'test mail',
-            text : `reset link for reset password-- ${rst}`
-
-        };
-
-        mailTransporter.sendMail(mailDetails,(err, data)=>{
-            if(err){
-                res.json(err);
-                console.log('error occurs')
-            } else {
-                res.json(data)
-                console.log('email sent ')
-            }
-        });
-    } else {
-        res.status(401).send({"message":"enter valid email"})
-        }   
-    })
-})
-
-// app.post('/user/profile-image',passport.authenticate('jwt', { session: false }),(req, res, next)=>{
-//     const email = req.user.email
-//     const _id = req.user._id
-//     console.log('idddd ',_id)
-//     console.log('profile-image',email)
-
-//     dataUser.findOne({email:email}, (err,mailId)=>{
-//         if (mailId){
-//             let imagePath = '/home/bhoots/Downloads/AJ.jpeg';
-//             const a = new dataUser;
-//             a.image.data = fs.readFileSync(imagePath);
-//             a.image.contentType = 'image/jpeg'
-//             a.save (function(err,a){
-//                 if(err) throw err;
-//                 console.error('image saved')
-//             res.status(200).send({success:true, userEmail:email, image:a})
-//             })
-//             console.log('frm dataUser',mailId)
-//         } else{
-//             console.log(err)
-//         }
-//     })
-// })
 
 app.listen(3001,()=>{
 	console.log('listened')
