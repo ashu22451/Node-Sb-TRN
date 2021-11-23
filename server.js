@@ -21,7 +21,7 @@ app.use(passport.initialize());
 
 
 mongoClient.connect('mongodb://localhost:27017/Serverdb',{
-	useNewUrlParser:'true',
+    useNewUrlParser:'true',
 })
 mongoClient.connection.on("error", err => {
     console.log("err", err)
@@ -43,11 +43,11 @@ const addressSchema = Schema({
                 })
 
 const userSchema = Schema({
-	firstname  : {type:String, required: true},
-	lastname   : {type:String, required: true},
-	username   : {type:String, required: true}, 
-	email      : {type:String, required: true}, 
-	password   : {type:String, required: true}, 
+    firstname  : {type:String, required: true},
+    lastname   : {type:String, required: true},
+    username   : {type:String, required: true}, 
+    email      : {type:String, required: true}, 
+    password   : {type:String, required: true}, 
     Token      : String, 
     resetToken : String,
     image      : {data: Buffer,contentType: String},
@@ -68,7 +68,7 @@ const dataUser = mongoClient.model('dataUser',userSchema)
 
 
 app.get('/', (req, res)=>{
-	res.send('home page')
+    res.send('home page')
 })
 
 
@@ -359,6 +359,5 @@ app.post('/user/verify-reset-password', (req, res)=>{
 // })
 
 app.listen(3001,()=>{
-	console.log('listened')
+    console.log('listened')
 });
-
