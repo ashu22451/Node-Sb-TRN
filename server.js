@@ -361,3 +361,4 @@ app.post('/user/verify-reset-password', (req, res)=>{
 app.listen(3000,()=>{
     console.log('listened')
 });
+module.exports = app;
