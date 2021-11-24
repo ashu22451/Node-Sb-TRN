@@ -20,7 +20,7 @@ app.use(bodyParser.urlencoded({extended:false}))
 app.use(passport.initialize());
 
 
-mongoClient.connect('mongodb://localhost:27017/Serverdb',{
+mongoClient.connect('mongodb+srv://test_hp:hLyY4Im4vNyFUv8V@cluster0.cmnkf.mongodb.net/tManual?retryWrites=true&w=majority',{
     useNewUrlParser:'true',
 })
 mongoClient.connection.on("error", err => {
