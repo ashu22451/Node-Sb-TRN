@@ -11,6 +11,9 @@ const JwtStrategy = require('passport-jwt').Strategy,
 const passport = require('passport')
 const nodemailer = require('nodemailer')
 const fs = require('fs')
+const multer = require('multer');
+const {GridFsStorage }= require('multer-gridfs-storage')
+const Grid = require('gridfs-stream')
 
 const app = express();
 const key = new NodeRSA ({b:512});
@@ -19,35 +22,31 @@ const _id = mongo._id;
 app.use(bodyParser.urlencoded({extended:false}))
 app.use(passport.initialize());
 
+const url = 'mongodb+srv://test_hp:hLyY4Im4vNyFUv8V@cluster0.cmnkf.mongodb.net/tManual?retryWrites=true&w=majority'
+mongoClient.connect(url,{useNewUrlParser:'true',})
+mongoClient.connection.on("error", err => {console.log("err", err)})
+mongoClient.connection.on("connected", (err, res) => {console.log("mongoose is connected")})
 
-mongoClient.connect('mongodb://localhost:27017/Serverdb',{
-    useNewUrlParser:'true',
-})
-mongoClient.connection.on("error", err => {
-    console.log("err", err)
-})
-mongoClient.connection.on("connected", (err, res) => {
-    console.log("mongoose is connected")
-})
+
 var Schema = mongoClient.Schema
 const addressSchema = Schema({
     
-    street      : {type:String, required: true},
-    city        : {type:String, required: true},
-    state       : {type:String, required: true},
-    pin_code    : {type:Number, required: true},
-    phone_no    : {type:Number, required: true},
+    street      : {type:String, },
+    city        : {type:String, },
+    state       : {type:String, },
+    pin_code    : {type:Number, },
+    phone_no    : {type:Number, },
     user_id     : String,
     username    : [{type: Schema.Types.ObjectId,
     ref         : 'dataUser'}]  
                 })
 
 const userSchema = Schema({
-    firstname  : {type:String, required: true},
-    lastname   : {type:String, required: true},
-    username   : {type:String, required: true}, 
-    email      : {type:String, required: true}, 
-    password   : {type:String, required: true}, 
+    firstname  : {type:String, },
+    lastname   : {type:String, },
+    username   : {type:String, }, 
+    email      : {type:String, }, 
+    password   : {type:String, }, 
     Token      : String, 
     resetToken : String,
     image      : {data: Buffer,contentType: String},
@@ -60,11 +59,17 @@ const access_token = Schema({
     user_id     : String,
                     })
 
+const img = Schema({
+    avatar   : {data: Buffer,contentType: String},
+    user_id  : String,
+    username : String,
+        })
+
 userSchema.plugin(mongoosePaginate)
 const ADDRESS = mongoClient.model('ADDRESS',addressSchema)
 const accesstoken = mongoClient.model('accesstoken',access_token) 
 const dataUser = mongoClient.model('dataUser',userSchema)
-
+const userImg = mongoClient.model('userImg', img)
 
 
 app.get('/', (req, res)=>{
@@ -103,7 +108,7 @@ app.post ('/user/registration',check("email","invalid email").isEmail(),
     } else {
         
         const encryptPassword = key.encrypt(password,"base64");
-        var token = jwt.sign({email:email},'secret',{expiresIn:3600})
+        var token = jwt.sign({email:email},'secret',{expiresIn:12960000})
         var resetToken = jwt.sign({email:email},'secret')
         const Example = new dataUser ({
                         "firstname" :`${req.body.firstname}`,
@@ -334,29 +339,28 @@ app.post('/user/verify-reset-password', (req, res)=>{
     })
 })
 
-// app.post('/user/profile-image',passport.authenticate('jwt', { session: false }),(req, res, next)=>{
-//     const email = req.user.email
-//     const _id = req.user._id
-//     console.log('idddd ',_id)
-//     console.log('profile-image',email)
+let storage = new GridFsStorage({url,file: (req, file)=>{
+        return new Promise(
+            (resolve, reject)=>{
+                const fileInfo = {
+                    filename : file.originalname,
+                    bucketName: "imageUpload"
+                }
+                resolve(fileInfo)
+            })
+    }    
+})
+const upload = multer ({storage})
 
-//     dataUser.findOne({email:email}, (err,mailId)=>{
-//         if (mailId){
-//             let imagePath = '/home/bhoots/Downloads/AJ.jpeg';
-//             const a = new dataUser;
-//             a.image.data = fs.readFileSync(imagePath);
-//             a.image.contentType = 'image/jpeg'
-//             a.save (function(err,a){
-//                 if(err) throw err;
-//                 console.error('image saved')
-//             res.status(200).send({success:true, userEmail:email, image:a})
-//             })
-//             console.log('frm dataUser',mailId)
-//         } else{
-//             console.log(err)
-//         }
-//     })
-// })
+
+
+    app.post('/upload', upload.single('upload'),(req, res)=>{
+        res.send(200).json({file:req.file})
+    })
+
+
+
+
 
 app.listen(3000,()=>{
     console.log('listened')
